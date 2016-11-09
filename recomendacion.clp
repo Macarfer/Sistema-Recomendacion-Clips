@@ -34,8 +34,12 @@
     (assert (item(name ssd)
     (relevantProperties 
     electronica disco duro estado solido ordenador almacenamiento)))
+    (assert (item(name hdd)
+    (relevantProperties 
+    electronica disco duro estado solido ordenador almacenamiento)))
+    
     )
-
+    
 (defrule secondR
 	(initial-fact)
     ?i<-(item(name ?itemName))
@@ -55,17 +59,68 @@
    )  
 
 
-(defrule addToCart
+(defrule removeFromRecommendations
+    ;we have recommendation panel
+    ?p<-(recommendationPanel(userName ?userName)(item $?rItems))
+    ;we've got an item
     ?i<-(item(name ?itemName))
-    ?s<-(supermarketStorage(name ?supermarketName)(item  $?itemS))
-    (test(member$ ?itemName $?itemS))
-    ;?u<-(user(name ?userName)(cart $?cart)(recommendationPanel ~nil))
-    ?c<-(cart(userName ?userName)(item $?cart))
-    (not(test(member$ ?itemName $?cart)))
+     ; The item isn't in the cart
+    ?c<-(cart(userName ?userName)(item $?cart))  
+    (test(member$ ?itemName $?cart))
+    (test(member$ ?itemName $?rItems))
     =>
-    ;(printout t "Bon dia "?userName", quere engadir "?itemName" ao carro?  (si no) ")
-     (modify ?c (userName ?userName)(item (insert$ ?cart 1  ?itemName)))
-   )
+     (modify ?p (userName ?userName)(item (delete$ $?rItems (member$ ?itemName $?rItems) (member$ ?itemName $?rItems) )))
+)
+
+(defrule checkRecomendations
+     ?p<-(recommendationPanel(userName ?serName)(item $?rItems))
+      (test(member$ (first$ $?rItems) $?rItems))
+      =>
+     (printout t "This are the recomendations for you, based on your cart: "crlf $?rItems" "crlf)
+)
+(defrule checkIfElementExist
+     ?s<-(supermarketStorage(name ?supermarketName)(item  $?itemS))
+    ?c<-(cart(userName ?userName)(item $?cart))
+    (not(test(member$ (first$ $?cart) $?itemS)))
+    =>
+    (printout t "The item "(first$ $?cart)" does not exist!" crlf)
+    (modify ?c (userName ?userName)(item (delete$ $?cart 1 1)))
+    )
+
+(defrule addToRecommendations
+    ;we have recommendation panel
+    ?p<-(recommendationPanel(userName ?serName)(item $?rItems))
+
+    ;we've got an item
+    ?i<-(item(name ?itemName)(relevantProperties $?tags))
+    ?s<-(supermarketStorage(name ?supermarketName)(item  $?itemS))
+     (test(member$ ?itemName $?itemS))
+
+    ; The item isn't in the cart
+    ?c<-(cart(userName ?userName)(item $?cart))  
+    (not(test(member$ ?itemName $?cart)))
+
+    ; We've got another item
+    ?i2<-(item(name ?itemName2)(relevantProperties $?tags2))
+    (test(member$ ?itemName2 $?itemS))
+
+    ; The second item is in the cart
+    (test(member$ ?itemName2 $?cart))
+    ;And some of the tags are compatible
+    (test(member$ $?tags $?tags2))
+
+    ; And last the item isn't already been recomended!
+    (not(test(member$ ?itemName $?rItems)))
+    =>
+    (modify ?p (userName ?userName)(item (insert$ $?rItems 1 ?itemName)))
+    )
 
 
-
+(defrule addToCart
+     ?s<-(supermarketStorage(name ?supermarketName)(item  $?itemS))
+    ?c<-(cart(userName ?userName)(item $?cart))
+     =>
+     (printout t "Insert an item to add it to the cart: "crlf ?itemS" " crlf)
+     (bind ?e(read))
+     (modify ?c (userName ?userName)(item (insert$ ?cart 1  ?e)))
+)
